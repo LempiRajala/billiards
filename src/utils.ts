@@ -1,5 +1,17 @@
 export const between = (min: number, x: number, max: number) => x >= min && x <= max;
 
+export const limit = (min: number, x: number, max: number) => {
+  if(x < min) {
+    return min;
+  }
+
+  if(x > max) {
+    return max;
+  }
+
+  return x;
+}
+
 export const sq = (x: number) => x * x;
 
 export const Vec2MulNum = (v: Vec2, n: number): Vec2 => [v[0] * n, v[1] * n];
@@ -38,23 +50,22 @@ export const handleCollision = (b1: Ball, b2: Ball) => {
 export const checkAndHandleBorderCollision = (b: Ball, [right, bottom]: Vec2) => {
   if(b.x - b.radius < 0) {
     b.velocity[0] = +Math.abs(b.velocity[0]);
-    b.x = b.radius;
   }
 
   if(b.x + b.radius > right) {
     b.velocity[0] = -Math.abs(b.velocity[0]);
-    b.x = right - b.radius;
   }
 
   if(b.y - b.radius < 0) {
     b.velocity[1] = +Math.abs(b.velocity[1]);
-    b.y = b.radius;
   }
-
+  
   if(b.y + b.radius > bottom) {
     b.velocity[1] = -Math.abs(b.velocity[1]);
-    b.y = bottom - b.radius;
   }
+  
+  b.x = limit(b.radius, b.x, right  - b.radius);
+  b.y = limit(b.radius, b.y, bottom - b.radius);
 }
 
 export const findBallByPos = (balls: Ball[], pos: Vec2) => (

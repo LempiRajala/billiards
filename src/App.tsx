@@ -15,11 +15,6 @@ for(let angle = 0; angle <= PI2; angle += PI2 / 6) {
     mass: 10, velocity: [0, 0] });
 }
 
-// [
-//   { x: 500, y: 200, radius: 40, mass: 10, color: 0xff0000, velocity: [0, 0] },
-//   { x: 200, y: 200, radius: 40, mass: 10, color: 0xff0000, velocity: [30, 0] }
-// ];
-
 function App() {
   const [balls] = useState(initialBalls);
   const [ballForPulse, setBallForPulse] = useState<number>(-1);
