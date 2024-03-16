@@ -51,5 +51,6 @@ export default function Canvas({
     onMouseMove={e => onmove(e.clientX, e.clientY)}
     onMouseDown={e => ondown(e.clientX, e.clientY, e.button)}
     onMouseUp={e => onup(e.clientX, e.clientY, e.button)}
+    onContextMenu={e => e.preventDefault()}
     ref={root} width={width} height={height}></canvas>;
 }

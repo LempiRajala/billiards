@@ -2,6 +2,7 @@ import React, { MouseEventHandler, useEffect, useRef, useState } from "react"
 import { Vec2SubVec2, Vec2SumVec2, checkAndHandleBorderCollision, checkCollision, findBallByPos, handleCollision } from "../utils";
 import { LeftMouseButton, RightMouseButton, physicsUpdatePerSecond } from "../const";
 import Canvas from "./Canvas";
+import ColorSelect from "./ColorSelect";
 
 export default function Board({
   balls
@@ -11,12 +12,15 @@ export default function Board({
   const [size, setSize] = useState<Vec2>([window.innerWidth, window.innerHeight]);
   const [pulseLine, setPulseLine] = useState<Line | null>(null);
   const [selectedBall, setSelectedBall] = useState<Ball | null>(null);
+  const [colorSelectPos, setColorSelectPos] = useState<Vec2 | null>(null);
 
   useEffect(() => {
     window.addEventListener('resize', () => setSize([window.innerWidth, window.innerHeight]));
   }, []);
 
   useEffect(() => {
+    if(colorSelectPos) return;
+
     let stop = false;
     let lastStart = performance.now();
     (function phloop() {
@@ -61,10 +65,10 @@ export default function Board({
     })();
 
     return () => void (stop = true);
-  }, [balls, selectedBall]);
+  }, [balls, selectedBall, colorSelectPos]);
 
   const onmove = (mouseX: number, mouseY: number) => {
-    if(selectedBall) {
+    if(selectedBall && pulseLine) {
       setPulseLine({
         x1: mouseX,
         y1: mouseY,
@@ -79,13 +83,28 @@ export default function Board({
   const ondown = (x: number, y: number, btn: number) => {
     const selectedBall = findBallByPos(balls, [x, y]);
     if(selectedBall !== -1) {
+      const ball = balls[selectedBall];
+
       if(btn === LeftMouseButton) {
-        setSelectedBall(balls[selectedBall]);
+        setSelectedBall(ball);
+        setPulseLine({
+          x1: x,
+          y1: y,
+          x2: ball.x,
+          y2: ball.y,
+          width: 1,
+          color: 0xfff
+        });
       }
   
       if(btn === RightMouseButton) {
-        // todo
+        setColorSelectPos([ball.x, ball.y]);
+        setSelectedBall(ball);
       }
+    }
+
+    if(colorSelectPos) {
+      setColorSelectPos(null);
     }
   }
 
@@ -100,16 +119,25 @@ export default function Board({
     }
   }
 
-  if(size[0] !== window.innerWidth || size[1] !== window.innerHeight) {
-    setSize([window.innerWidth, window.innerHeight]);
+  const onSelectColor = (color: string) => {
+    if(selectedBall) {
+      selectedBall.color = color;
+      setSelectedBall(null);
+      setColorSelectPos(null);
+    }
   }
 
   return (
-    <Canvas
-      balls={balls} lines={pulseLine ? [pulseLine] : []}
-      width={size[0]} height={size[1]}
-      ondown={ondown}
-      onmove={onmove}
-      onup={onup}/>
+    <>
+      { colorSelectPos &&
+        <ColorSelect onSelect={onSelectColor} x={colorSelectPos[0]} y={colorSelectPos[1]}/>
+      }
+      <Canvas
+        balls={balls} lines={pulseLine ? [pulseLine] : []}
+        width={size[0]} height={size[1]}
+        ondown={ondown}
+        onmove={onmove}
+        onup={onup}/>
+    </>
   )
 }
