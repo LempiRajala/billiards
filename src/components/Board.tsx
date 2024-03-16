@@ -1,61 +1,20 @@
 import React, { MouseEventHandler, useEffect, useRef, useState } from "react"
-import { checkAndHandleBorderCollision, checkCollision, handleCollision } from "../utils";
-import { physicsUpdatePerSecond } from "../const";
-
+import { Vec2SubVec2, Vec2SumVec2, checkAndHandleBorderCollision, checkCollision, findBallByPos, handleCollision } from "../utils";
+import { LeftMouseButton, RightMouseButton, physicsUpdatePerSecond } from "../const";
+import Canvas from "./Canvas";
 
 export default function Board({
-  onmove, onmousedown, onmouseup, balls, arrow
+  balls
 }: {
-  onmove: (x: number, y: number) => void,
-  onmousedown: (x: number, y: number, btn: number) => void,
-  onmouseup: (x: number, y: number, btn: number) => void,
-  balls: Ball[], arrow: [number, Vec2]
+  balls: Ball[]
 }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [ctx, setCtx] = useState<CanvasRenderingContext2D | null>(null);
   const [size, setSize] = useState<Vec2>([window.innerWidth, window.innerHeight]);
+  const [pulseLine, setPulseLine] = useState<Line | null>(null);
+  const [selectedBall, setSelectedBall] = useState<Ball | null>(null);
 
   useEffect(() => {
-    if(canvasRef.current) {
-      setCtx(canvasRef.current.getContext("2d") as CanvasRenderingContext2D);
-    }
-  }, [canvasRef]);
-
-  useEffect(() => {
-    if(!ctx) return;
-
-    let stop = false;
-    (function gloop() {
-      ctx.clearRect(0, 0, size[0], size[1]);
-      balls.forEach(({ x, y, radius, color }) => {
-        ctx.beginPath();
-        ctx.arc(x, y, radius, 0, 2 * Math.PI);
-        ctx.fillStyle = `#${color.toString(16)}`;
-        ctx.fill();
-      });
-
-      if(arrow[0] !== -1) {
-        const ball = balls[arrow[0]];
-        ctx.beginPath();
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 2;
-        ctx.moveTo(ball.x, ball.y);
-        ctx.lineTo(...arrow[1]);
-        ctx.stroke();
-      }
-
-      !stop && requestAnimationFrame(gloop);
-    })();
-
-    return () => void (stop = true);
-  }, [ctx, balls, arrow]);
-
-  useEffect(() => {
-    if(ctx) {
-      ctx.canvas.width = size[0];
-      ctx.canvas.height = size[1];
-    }
-  }, [ctx, size]);
+    window.addEventListener('resize', () => setSize([window.innerWidth, window.innerHeight]));
+  }, []);
 
   useEffect(() => {
     let stop = false;
@@ -85,20 +44,72 @@ export default function Board({
 
       const calcTime = performance.now() - start;
       lastStart = start;
+
+      // обновление координат пульса если таковой есть
+      if(selectedBall) {
+        setPulseLine(line => line && {
+          x1: line.x1,
+          y1: line.y1,
+          x2: selectedBall.x,
+          y2: selectedBall.y,
+          width: 1,
+          color: 0xfff
+        });
+      }
+
       !stop && setTimeout(phloop, Math.max(0, 1e3 / physicsUpdatePerSecond - calcTime));
     })();
 
     return () => void (stop = true);
-  }, []);
+  }, [balls, selectedBall]);
+
+  const onmove = (mouseX: number, mouseY: number) => {
+    if(selectedBall) {
+      setPulseLine({
+        x1: mouseX,
+        y1: mouseY,
+        x2: selectedBall.x,
+        y2: selectedBall.y,
+        width: 1,
+        color: 0xfff
+      });
+    }
+  }
+
+  const ondown = (x: number, y: number, btn: number) => {
+    const selectedBall = findBallByPos(balls, [x, y]);
+    if(selectedBall !== -1) {
+      if(btn === LeftMouseButton) {
+        setSelectedBall(balls[selectedBall]);
+      }
+  
+      if(btn === RightMouseButton) {
+        // todo
+      }
+    }
+  }
+
+  const onup = (x: number, y: number, btn: number) => {
+    if(btn === LeftMouseButton && pulseLine && selectedBall) {
+      const velocity = [
+        pulseLine.x2 - pulseLine.x1,
+        pulseLine.y2 - pulseLine.y1] as Vec2;
+      selectedBall.velocity = Vec2SumVec2(selectedBall.velocity, velocity);
+      setSelectedBall(null);
+      setPulseLine(null);
+    }
+  }
 
   if(size[0] !== window.innerWidth || size[1] !== window.innerHeight) {
     setSize([window.innerWidth, window.innerHeight]);
   }
 
   return (
-    <canvas ref={canvasRef}
-      onMouseMove={e => onmove(e.clientX, e.clientY)}
-      onMouseDown={e => onmousedown(e.clientX, e.clientY, e.button)}
-      onMouseUp={e => onmouseup(e.clientX, e.clientY, e.button)}></canvas>
+    <Canvas
+      balls={balls} lines={pulseLine ? [pulseLine] : []}
+      width={size[0]} height={size[1]}
+      ondown={ondown}
+      onmove={onmove}
+      onup={onup}/>
   )
 }
